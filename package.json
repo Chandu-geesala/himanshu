@@ -4,7 +4,10 @@
   "main": "index.js",
   "license": "MIT",
   "scripts": {
-    "dev": "nodemon src/server.js"
+    "dev": "nodemon src/server.js",
+    "start": "node src/server.js", // For starting the backend
+    "build": "cd client && npm install && npm run build", // Builds the React app
+    "start-client": "cd client && npm start" // Starts the React app
   },
   "dependencies": {
     "express": "^4.17.1",
