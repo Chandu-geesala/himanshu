@@ -1,7 +1,9 @@
+// lib/pages/home_page.dart
 import 'package:flutter/material.dart';
-import '../services/api_service.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
 import '../models/category.dart';
-import 'meals_list_page.dart';
+import 'meals_page.dart';
 
 class HomePage extends StatefulWidget {
   @override
@@ -9,47 +11,87 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
-  late Future<List<Category>> _categories;
+  List<Category> categories = [];
+  bool isLoading = true;
 
   @override
   void initState() {
     super.initState();
-    _categories = ApiService.fetchCategories();
+    fetchCategories();
+  }
+
+  Future<void> fetchCategories() async {
+    final response = await http.get(Uri.parse('https://www.themealdb.com/api/json/v1/1/categories.php'));
+    if (response.statusCode == 200) {
+      final data = json.decode(response.body);
+      setState(() {
+        categories = (data['categories'] as List).map((json) => Category.fromJson(json)).toList();
+        isLoading = false;
+      });
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text("Meal Categories")),
-      body: FutureBuilder<List<Category>>(
-        future: _categories,
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return Center(child: CircularProgressIndicator());
-          } else if (snapshot.hasError) {
-            return Center(child: Text('Error loading categories'));
-          } else {
-            final categories = snapshot.data!;
-            return ListView.builder(
+      appBar: AppBar(
+        title: const Text('Meal Categories'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.shuffle),
+            tooltip: 'Random Meal',
+            onPressed: () {
+              Navigator.pushNamed(context, '/random');
+            },
+          ),
+        ],
+        bottom: PreferredSize(
+          preferredSize: Size.fromHeight(56),
+          child: Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: TextField(
+              decoration: InputDecoration(
+                hintText: 'Search (not working yet)',
+                prefixIcon: Icon(Icons.search),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                filled: true,
+                fillColor: Colors.white,
+              ),
+            ),
+          ),
+        ),
+      ),
+      body: isLoading
+          ? Center(child: CircularProgressIndicator())
+          : GridView.builder(
+              padding: const EdgeInsets.all(10),
               itemCount: categories.length,
-              itemBuilder: (context, index) {
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 2,
+                mainAxisSpacing: 10,
+                crossAxisSpacing: 10,
+              ),
+              itemBuilder: (ctx, index) {
                 final category = categories[index];
-                return ListTile(
-                  title: Text(category.name),
+                return GestureDetector(
                   onTap: () {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (_) => MealsListPage(category: category.name),
+                        builder: (_) => MealsPage(category: category.name),
                       ),
                     );
                   },
+                  child: GridTile(
+                    child: Image.network(category.thumb, fit: BoxFit.cover),
+                    footer: GridTileBar(
+                      backgroundColor: Colors.black54,
+                      title: Text(category.name, textAlign: TextAlign.center),
+                    ),
+                  ),
                 );
               },
-            );
-          }
-        },
-      ),
+            ),
     );
   }
 }
