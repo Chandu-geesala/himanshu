@@ -1,41 +1,55 @@
-import 'dart:convert';
-import 'package:http/http.dart' as http;
+import 'package:flutter/material.dart';
+import '../services/api_service.dart';
 import '../models/category.dart';
-import '../models/meal.dart';
+import 'meals_list_page.dart';
 
-class ApiService {
-  static const String baseUrl = 'https://www.themealdb.com/api/json/v1/1';
+class HomePage extends StatefulWidget {
+  @override
+  _HomePageState createState() => _HomePageState();
+}
 
-  static Future<List<Category>> fetchCategories() async {
-    final response = await http.get(Uri.parse('$baseUrl/categories.php'));
-    if (response.statusCode == 200) {
-      final data = json.decode(response.body);
-      final List categories = data['categories'];
-      return categories.map((json) => Category.fromJson(json)).toList();
-    } else {
-      throw Exception('Failed to load categories');
-    }
+class _HomePageState extends State<HomePage> {
+  late Future<List<Category>> _categories;
+
+  @override
+  void initState() {
+    super.initState();
+    _categories = ApiService.fetchCategories();
   }
 
-  static Future<List<Meal>> fetchMealsByCategory(String category) async {
-    final response = await http.get(Uri.parse('$baseUrl/filter.php?c=$category'));
-    if (response.statusCode == 200) {
-      final data = json.decode(response.body);
-      final List meals = data['meals'];
-      return meals.map((json) => Meal.fromJson(json)).toList();
-    } else {
-      throw Exception('Failed to load meals');
-    }
-  }
-
-  static Future<Meal> fetchMealDetail(String id) async {
-    final response = await http.get(Uri.parse('$baseUrl/lookup.php?i=$id'));
-    if (response.statusCode == 200) {
-      final data = json.decode(response.body);
-      final meal = data['meals'][0];
-      return Meal.fromJson(meal);
-    } else {
-      throw Exception('Failed to load meal detail');
-    }
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: Text("Meal Categories")),
+      body: FutureBuilder<List<Category>>(
+        future: _categories,
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return Center(child: CircularProgressIndicator());
+          } else if (snapshot.hasError) {
+            return Center(child: Text('Error loading categories'));
+          } else {
+            final categories = snapshot.data!;
+            return ListView.builder(
+              itemCount: categories.length,
+              itemBuilder: (context, index) {
+                final category = categories[index];
+                return ListTile(
+                  title: Text(category.name),
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => MealsListPage(category: category.name),
+                      ),
+                    );
+                  },
+                );
+              },
+            );
+          }
+        },
+      ),
+    );
   }
 }
